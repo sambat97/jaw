@@ -395,7 +395,7 @@ async def click_verification_link_with_browser(verification_url: str) -> dict:
             not_approved_indicators = [
                 'not approved',
                 'We are unable',
-                'could not verify',
+                'sourcesUnavailable',
                 'unable to verify',
                 'verification failed',
                 'Try again',
