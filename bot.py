@@ -1515,7 +1515,7 @@ def main():
     application.add_handler(veteran_conv)
 
     print(f"🤖 Bot started: {BOT_NAME}")
-    print(f"🔄 Request delay: {REQUEST_DELAY}s")
+    print(f"🔄 Request delay: {REQUEST_DELAY_MIN}-{REQUEST_DELAY_MAX}s (random)")
     print(f"🔁 Max retries: {MAX_RETRIES}")
     print(f"✅ JobQueue enabled for email monitoring")
 
