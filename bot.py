@@ -1848,7 +1848,7 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel_veteran)],
         conversation_timeout=STEP_TIMEOUT,
-        per_message=False,
+        per_message=True,
         per_chat=True,
         per_user=True,
     )
