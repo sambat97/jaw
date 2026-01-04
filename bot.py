@@ -507,322 +507,6 @@ async def click_verification_link_with_browser(verification_url: str) -> dict:
             "verification_status": "error"
         }
 
-
-# =====================================================
-# BROWSER AUTOMATION - FORM FILLING SEPERTI MANUSIA!
-# =====================================================
-
-async def fill_sheerid_form_with_browser(
-    url: str,
-    status: str,
-    org_name: str,
-    first_name: str,
-    last_name: str,
-    birth_date: str,
-    email: str,
-    discharge_date: str
-) -> dict:
-    """
-    🎯 BROWSER AUTOMATION: Isi form SheerID seperti manusia!
-    Bukan via API, tapi langsung klik dan ketik di browser Chrome
-    """
-    browser = None
-
-    try:
-        print(f"🌐 Starting browser automation for form filling...")
-        print(f"📝 URL: {url}")
-
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-gpu',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                ]
-            )
-
-            random_ua = random.choice(USER_AGENTS)
-            random_viewport = random.choice(VIEWPORTS)
-
-            print(f"🎭 Using UA: {random_ua[:60]}...")
-            print(f"📐 Viewport: {random_viewport}")
-
-            context = await browser.new_context(
-                user_agent=random_ua,
-                viewport=random_viewport,
-                locale='en-US',
-                timezone_id='America/Los_Angeles'
-            )
-
-            page = await context.new_page()
-
-            print(f"🖱️ Navigating to SheerID form...")
-            await page.goto(url, wait_until='networkidle', timeout=30000)
-            await asyncio.sleep(2)
-
-            print(f"✅ Page loaded: {page.url}")
-
-            # STEP 1: Select Military Status
-            print(f"📝 Step 1: Selecting status = {status}")
-
-            status_selectors = {
-                "ACTIVE_DUTY": [
-                    'input[value="ACTIVE_DUTY"]',
-                    'button:has-text("Active Duty")',
-                    'label:has-text("Active Duty")',
-                ],
-                "VETERAN": [
-                    'input[value="INACTIVE_MILITARY"]',
-                    'button:has-text("Veteran")',
-                    'button:has-text("Retiree")',
-                    'label:has-text("Veteran")',
-                ],
-                "RESERVIST": [
-                    'input[value="RESERVIST"]',
-                    'button:has-text("Reservist")',
-                    'button:has-text("National Guard")',
-                    'label:has-text("Reservist")',
-                ]
-            }
-
-            selectors_to_try = status_selectors.get(status, status_selectors["VETERAN"])
-
-            status_selected = False
-            for selector in selectors_to_try:
-                try:
-                    await page.click(selector, timeout=5000)
-                    print(f"✅ Status selected via: {selector}")
-                    status_selected = True
-                    await asyncio.sleep(1)
-                    break
-                except:
-                    continue
-
-            if not status_selected:
-                try:
-                    status_value = "INACTIVE_MILITARY" if status == "VETERAN" else status
-                    await page.evaluate(f"""
-                        const input = document.querySelector('input[value="{status_value}"]');
-                        if (input) input.click();
-                    """)
-                    print(f"✅ Status selected via JavaScript")
-                    await asyncio.sleep(1)
-                except:
-                    pass
-
-            # STEP 2: Select Organization
-            print(f"📝 Step 2: Selecting organization = {org_name}")
-
-            org_selected = False
-
-            try:
-                select_selectors = ['select[name="organization"]', 'select#organization', 'select[id*="organization"]']
-                for sel in select_selectors:
-                    try:
-                        await page.select_option(sel, label=org_name, timeout=3000)
-                        print(f"✅ Organization selected via dropdown: {sel}")
-                        org_selected = True
-                        break
-                    except:
-                        continue
-            except:
-                pass
-
-            if not org_selected:
-                button_selectors = [
-                    f'button:has-text("{org_name}")',
-                    f'input[value*="{org_name}"]',
-                    f'label:has-text("{org_name}")',
-                ]
-                for selector in button_selectors:
-                    try:
-                        await page.click(selector, timeout=3000)
-                        print(f"✅ Organization selected via: {selector}")
-                        org_selected = True
-                        break
-                    except:
-                        continue
-
-            await asyncio.sleep(1)
-
-            # STEP 3: Fill Personal Info
-            print(f"📝 Step 3: Filling personal information...")
-
-            # First Name
-            first_name_selectors = [
-                'input[name="firstName"]',
-                'input#firstName',
-                'input[placeholder*="First"]',
-                'input[placeholder*="first"]',
-            ]
-
-            for selector in first_name_selectors:
-                try:
-                    await page.fill(selector, first_name, timeout=3000)
-                    print(f"✅ First name filled: {first_name}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Last Name
-            last_name_selectors = [
-                'input[name="lastName"]',
-                'input#lastName',
-                'input[placeholder*="Last"]',
-                'input[placeholder*="last"]',
-            ]
-
-            for selector in last_name_selectors:
-                try:
-                    await page.fill(selector, last_name, timeout=3000)
-                    print(f"✅ Last name filled: {last_name}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Birth Date
-            birth_selectors = [
-                'input[name="birthDate"]',
-                'input#birthDate',
-                'input[type="date"]',
-                'input[placeholder*="Birth"]',
-                'input[placeholder*="birth"]',
-            ]
-
-            for selector in birth_selectors:
-                try:
-                    await page.fill(selector, birth_date, timeout=3000)
-                    print(f"✅ Birth date filled: {birth_date}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Email
-            email_selectors = [
-                'input[name="email"]',
-                'input#email',
-                'input[type="email"]',
-                'input[placeholder*="Email"]',
-                'input[placeholder*="email"]',
-            ]
-
-            for selector in email_selectors:
-                try:
-                    await page.fill(selector, email, timeout=3000)
-                    print(f"✅ Email filled: {email}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Discharge Date
-            discharge_selectors = [
-                'input[name="dischargeDate"]',
-                'input#dischargeDate',
-                'input[placeholder*="Discharge"]',
-                'input[placeholder*="discharge"]',
-            ]
-
-            for selector in discharge_selectors:
-                try:
-                    await page.fill(selector, discharge_date, timeout=3000)
-                    print(f"✅ Discharge date filled: {discharge_date}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(1)
-
-            # STEP 4: Submit Form
-            print(f"🚀 Step 4: Submitting form...")
-
-            submit_selectors = [
-                'button[type="submit"]',
-                'button:has-text("Submit")',
-                'button:has-text("Continue")',
-                'button:has-text("Verify")',
-                'button:has-text("Next")',
-                'input[type="submit"]',
-            ]
-
-            form_submitted = False
-            for selector in submit_selectors:
-                try:
-                    await page.click(selector, timeout=3000)
-                    print(f"✅ Form submitted via: {selector}")
-                    form_submitted = True
-                    break
-                except:
-                    continue
-
-            if not form_submitted:
-                await browser.close()
-                return {
-                    "success": False,
-                    "submitted": False,
-                    "message": "Could not find submit button on page"
-                }
-
-            await asyncio.sleep(3)
-
-            print(f"📊 Form submission complete!")
-            print(f"📍 Current URL: {page.url}")
-
-            try:
-                page_text = await page.inner_text('body')
-            except:
-                page_text = await page.content()
-
-            success_indicators = ['thank you', 'check your email', 'verification', 'submitted']
-            looks_successful = any(indicator in page_text.lower() for indicator in success_indicators)
-
-            await browser.close()
-
-            return {
-                "success": True,
-                "submitted": True,
-                "final_url": page.url,
-                "message": "Form filled and submitted successfully via browser!",
-                "looks_successful": looks_successful
-            }
-
-    except PlaywrightTimeout:
-        if browser:
-            await browser.close()
-        return {
-            "success": False,
-            "submitted": False,
-            "message": "Browser timeout - page tidak load dalam 30 detik"
-        }
-    except Exception as e:
-        if browser:
-            try:
-                await browser.close()
-            except:
-                pass
-        print(f"❌ Browser form filling error: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "submitted": False,
-            "message": f"Browser error: {str(e)}"
-        }
-
-
 # =====================================================
 # EMAIL MONITORING JOB
 # =====================================================
@@ -1671,13 +1355,12 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
         v_user_data.pop(user_id, None)
         return ConversationHandler.END
 
-    # confirm_yes - Process verification DENGAN BROWSER!
+    # confirm_yes - Process verification
     await query.edit_message_text(
         "⏳ *Processing verification...*\n\n"
         "🔄 Step 1: Generating temp email...\n"
-        "⏳ Step 2: Membuka Chrome browser...\n"
-        "⏳ Step 3: Isi form seperti manusia...\n"
-        "⏳ Step 4: Monitoring email...\n\n"
+        "⏳ Step 2: Submitting to SheerID...\n"
+        "⏳ Step 3: Monitoring email...\n\n"
         "Tunggu sebentar...",
         parse_mode="Markdown"
     )
@@ -1705,37 +1388,32 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
         chat_id=chat_id,
         text=(
             f"✅ *Email generated:* `{email}`\n\n"
-            "🌐 Opening Chrome browser...\n"
-            "🖱️ Filling form like a human...\n"
+            "🔄 Submitting data ke SheerID API...\n"
             "⏳ Please wait..."
         ),
         parse_mode="Markdown"
     )
 
-    # ISI FORM DENGAN BROWSER! BUKAN API
-    fill_result = await fill_sheerid_form_with_browser(
-        url=data["original_url"],
+    # Submit to SheerID dengan retry logic
+    submit_result = await submit_military_flow_with_retry(
+        verification_id=data["verification_id"],
         status=data["status"],
-        org_name=data["organization"]["name"],
         first_name=data["first_name"],
         last_name=data["last_name"],
         birth_date=data["birth_date"],
         email=email,
+        org=data["organization"],
         discharge_date=data["discharge_date"]
     )
 
-    if not fill_result.get("success"):
-        error_msg = fill_result.get("message", "Unknown error")
+    if not submit_result.get("success"):
+        error_msg = submit_result.get("message", "Unknown error")
         await context.bot.send_message(
             chat_id=chat_id,
             text=(
-                "❌ *BROWSER FORM SUBMISSION FAILED*\n\n"
+                "❌ *SUBMISSION FAILED*\n\n"
                 f"Error: {error_msg}\n\n"
-                "Kemungkinan:\n"
-                "• Page tidak load dengan benar\n"
-                "• Form elements tidak ditemukan\n"
-                "• Submit button tidak bisa di-klik\n\n"
-                "Coba lagi dengan /veteran"
+                "Coba lagi atau /veteran restart."
             ),
             parse_mode="Markdown"
         )
@@ -1754,10 +1432,9 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
     await context.bot.send_message(
         chat_id=chat_id,
         text=(
-            "✅ *Form berhasil diisi via browser!*\n\n"
-            f"📧 Email: `{email}`\n"
-            f"🔗 Final URL: `{fill_result.get('final_url', 'N/A')}`\n\n"
-            "🔄 Monitoring inbox setiap 10 detik...\n"
+            "✅ *Data submitted successfully!*\n\n"
+            f"📧 Monitoring email: `{email}`\n"
+            "🔄 Checking inbox setiap 10 detik...\n\n"
             "⏳ Bot akan otomatis klik verification link jika email masuk.\n"
             "Max wait time: 5 menit."
         ),
@@ -1779,7 +1456,7 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
         user_id,
         f"{data['first_name']} {data['last_name']}",
         email,
-        "submitted_via_browser",
+        "submitted",
         True
     )
 
