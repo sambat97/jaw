@@ -507,337 +507,6 @@ async def click_verification_link_with_browser(verification_url: str) -> dict:
             "verification_status": "error"
         }
 
-
-
-# =====================================================
-# BROWSER AUTOMATION - FORM FILLING SEPERTI MANUSIA!
-# =====================================================
-
-async def fill_sheerid_form_with_browser(
-    url: str,
-    status: str,
-    org_name: str,
-    first_name: str,
-    last_name: str,
-    birth_date: str,
-    email: str,
-    discharge_date: str
-) -> dict:
-    """
-    🎯 BROWSER AUTOMATION: Isi form SheerID seperti manusia!
-    Bukan via API, tapi langsung klik dan ketik di browser Chrome
-    """
-    browser = None
-
-    try:
-        print(f"🌐 Starting browser automation for form filling...")
-        print(f"📝 URL: {url}")
-
-        async with async_playwright() as p:
-            # Launch Chromium browser
-            browser = await p.chromium.launch(
-                headless=True,
-                args=[
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-gpu',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                ]
-            )
-
-            # Random UA & Viewport
-            random_ua = random.choice(USER_AGENTS)
-            random_viewport = random.choice(VIEWPORTS)
-
-            print(f"🎭 Using UA: {random_ua[:60]}...")
-            print(f"📐 Viewport: {random_viewport}")
-
-            context = await browser.new_context(
-                user_agent=random_ua,
-                viewport=random_viewport,
-                locale='en-US',
-                timezone_id='America/Los_Angeles'
-            )
-
-            page = await context.new_page()
-
-            print(f"🖱️ Navigating to SheerID form...")
-            await page.goto(url, wait_until='networkidle', timeout=30000)
-            await asyncio.sleep(2)
-
-            print(f"✅ Page loaded: {page.url}")
-
-            # STEP 1: Select Military Status
-            print(f"📝 Step 1: Selecting status = {status}")
-
-            # Map status untuk selector
-            status_selectors = {
-                "ACTIVE_DUTY": [
-                    'input[value="ACTIVE_DUTY"]',
-                    'button:has-text("Active Duty")',
-                    'label:has-text("Active Duty")',
-                ],
-                "VETERAN": [
-                    'input[value="INACTIVE_MILITARY"]',
-                    'button:has-text("Veteran")',
-                    'button:has-text("Retiree")',
-                    'label:has-text("Veteran")',
-                ],
-                "RESERVIST": [
-                    'input[value="RESERVIST"]',
-                    'button:has-text("Reservist")',
-                    'button:has-text("National Guard")',
-                    'label:has-text("Reservist")',
-                ]
-            }
-
-            selectors_to_try = status_selectors.get(status, status_selectors["VETERAN"])
-
-            status_selected = False
-            for selector in selectors_to_try:
-                try:
-                    await page.click(selector, timeout=5000)
-                    print(f"✅ Status selected via: {selector}")
-                    status_selected = True
-                    await asyncio.sleep(1)
-                    break
-                except Exception as e:
-                    print(f"⚠️ Selector '{selector}' failed: {e}")
-                    continue
-
-            if not status_selected:
-                print(f"⚠️ Could not select status, trying JavaScript...")
-                try:
-                    status_value = "INACTIVE_MILITARY" if status == "VETERAN" else status
-                    await page.evaluate(f"""
-                        const input = document.querySelector('input[value="{status_value}"]');
-                        if (input) input.click();
-                    """)
-                    print(f"✅ Status selected via JavaScript")
-                    await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"❌ JavaScript status selection failed: {e}")
-
-            # STEP 2: Select Organization (Branch)
-            print(f"📝 Step 2: Selecting organization = {org_name}")
-
-            org_selected = False
-
-            # Try dropdown/select first
-            try:
-                select_selectors = ['select[name="organization"]', 'select#organization', 'select[id*="organization"]']
-                for sel in select_selectors:
-                    try:
-                        await page.select_option(sel, label=org_name, timeout=3000)
-                        print(f"✅ Organization selected via dropdown: {sel}")
-                        org_selected = True
-                        break
-                    except:
-                        continue
-            except:
-                pass
-
-            # Try button/radio if dropdown failed
-            if not org_selected:
-                button_selectors = [
-                    f'button:has-text("{org_name}")',
-                    f'input[value*="{org_name}"]',
-                    f'label:has-text("{org_name}")',
-                ]
-                for selector in button_selectors:
-                    try:
-                        await page.click(selector, timeout=3000)
-                        print(f"✅ Organization selected via: {selector}")
-                        org_selected = True
-                        break
-                    except:
-                        continue
-
-            if not org_selected:
-                print(f"⚠️ Could not select organization")
-
-            await asyncio.sleep(1)
-
-            # STEP 3: Fill Personal Info
-            print(f"📝 Step 3: Filling personal information...")
-
-            # First Name
-            first_name_selectors = [
-                'input[name="firstName"]',
-                'input#firstName',
-                'input[placeholder*="First"]',
-                'input[placeholder*="first"]',
-            ]
-
-            for selector in first_name_selectors:
-                try:
-                    await page.fill(selector, first_name, timeout=3000)
-                    print(f"✅ First name filled: {first_name}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Last Name
-            last_name_selectors = [
-                'input[name="lastName"]',
-                'input#lastName',
-                'input[placeholder*="Last"]',
-                'input[placeholder*="last"]',
-            ]
-
-            for selector in last_name_selectors:
-                try:
-                    await page.fill(selector, last_name, timeout=3000)
-                    print(f"✅ Last name filled: {last_name}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Birth Date
-            birth_selectors = [
-                'input[name="birthDate"]',
-                'input#birthDate',
-                'input[type="date"]',
-                'input[placeholder*="Birth"]',
-                'input[placeholder*="birth"]',
-            ]
-
-            for selector in birth_selectors:
-                try:
-                    await page.fill(selector, birth_date, timeout=3000)
-                    print(f"✅ Birth date filled: {birth_date}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Email
-            email_selectors = [
-                'input[name="email"]',
-                'input#email',
-                'input[type="email"]',
-                'input[placeholder*="Email"]',
-                'input[placeholder*="email"]',
-            ]
-
-            for selector in email_selectors:
-                try:
-                    await page.fill(selector, email, timeout=3000)
-                    print(f"✅ Email filled: {email}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(0.5)
-
-            # Discharge Date
-            discharge_selectors = [
-                'input[name="dischargeDate"]',
-                'input#dischargeDate',
-                'input[placeholder*="Discharge"]',
-                'input[placeholder*="discharge"]',
-            ]
-
-            for selector in discharge_selectors:
-                try:
-                    await page.fill(selector, discharge_date, timeout=3000)
-                    print(f"✅ Discharge date filled: {discharge_date}")
-                    break
-                except:
-                    continue
-
-            await asyncio.sleep(1)
-
-            # STEP 4: Submit Form
-            print(f"🚀 Step 4: Submitting form...")
-
-            submit_selectors = [
-                'button[type="submit"]',
-                'button:has-text("Submit")',
-                'button:has-text("Continue")',
-                'button:has-text("Verify")',
-                'button:has-text("Next")',
-                'input[type="submit"]',
-            ]
-
-            form_submitted = False
-            for selector in submit_selectors:
-                try:
-                    await page.click(selector, timeout=3000)
-                    print(f"✅ Form submitted via: {selector}")
-                    form_submitted = True
-                    break
-                except Exception as e:
-                    print(f"⚠️ Submit selector '{selector}' failed: {e}")
-                    continue
-
-            if not form_submitted:
-                print(f"❌ Could not find submit button")
-                await browser.close()
-                return {
-                    "success": False,
-                    "submitted": False,
-                    "message": "Could not find submit button on page"
-                }
-
-            # Wait for submission to complete
-            await asyncio.sleep(3)
-
-            print(f"📊 Form submission complete!")
-            print(f"📍 Current URL: {page.url}")
-
-            # Check for success/error messages
-            try:
-                page_text = await page.inner_text('body')
-            except:
-                page_text = await page.content()
-
-            success_indicators = ['thank you', 'check your email', 'verification', 'submitted']
-            looks_successful = any(indicator in page_text.lower() for indicator in success_indicators)
-
-            await browser.close()
-
-            return {
-                "success": True,
-                "submitted": True,
-                "final_url": page.url,
-                "message": "Form filled and submitted successfully via browser!",
-                "looks_successful": looks_successful
-            }
-
-    except PlaywrightTimeout:
-        if browser:
-            await browser.close()
-        return {
-            "success": False,
-            "submitted": False,
-            "message": "Browser timeout - page tidak load dalam 30 detik"
-        }
-    except Exception as e:
-        if browser:
-            try:
-                await browser.close()
-            except:
-                pass
-        print(f"❌ Browser form filling error: {e}")
-        import traceback
-        traceback.print_exc()
-        return {
-            "success": False,
-            "submitted": False,
-            "message": f"Browser error: {str(e)}"
-        }
-
-
 # =====================================================
 # EMAIL MONITORING JOB
 # =====================================================
@@ -1252,157 +921,155 @@ async def check_sheerid_status(verification_id: str) -> dict:
         except Exception as e:
             return {"success": False, "status": "unknown", "message": str(e)}
 
-# FUNGSI INI TIDAK DIPAKAI LAGI - DIGANTI DENGAN BROWSER AUTOMATION
-# async def submit_military_flow_with_retry(
-#     verification_id: str,
-#     status: str,
-#     first_name: str,
-#     last_name: str,
-#     birth_date: str,
-#     email: str,
-#     org: dict,
-#     discharge_date: str,
-# ) -> dict:
-#     """Submit dengan retry logic dan exponential backoff untuk handle 429"""
-# 
-#     for attempt in range(MAX_RETRIES):
-#         try:
-#             # Delay antar request untuk avoid rate limit
-#             if attempt > 0:
-#                 backoff_delay = RETRY_BACKOFF * (2 ** (attempt - 1))
-#                 print(f"⏳ Waiting {backoff_delay}s before retry (attempt {attempt + 1}/{MAX_RETRIES})...")
-#                 await asyncio.sleep(backoff_delay)
-#             else:
-#                 await asyncio.sleep(random.uniform(REQUEST_DELAY_MIN, REQUEST_DELAY_MAX))  # Random delay 3-6 detik
-# 
-#             result = await submit_military_flow(
-#                 verification_id, status, first_name, last_name,
-#                 birth_date, email, org, discharge_date
-#             )
-# 
-#             # Jika 429, retry
-#             if not result.get("success"):
-#                 error_msg = result.get("message", "")
-#                 if "429" in error_msg or "rate limit" in error_msg.lower() or "limit" in error_msg.lower():
-#                     print(f"⚠️ Rate limit hit (429), will retry...")
-#                     continue
-#                 else:
-#                     return result  # Error lain, langsung return
-# 
-#             return result
-# 
-#         except Exception as e:
-#             print(f"❌ Attempt {attempt + 1} failed: {e}")
-#             if attempt == MAX_RETRIES - 1:
-#                 return {"success": False, "message": f"All {MAX_RETRIES} attempts failed: {str(e)}"}
-# 
-#     return {"success": False, "message": "Max retries exceeded"}
-# 
-# FUNGSI INI TIDAK DIPAKAI LAGI - DIGANTI DENGAN BROWSER AUTOMATION
-# async def submit_military_flow(
-#     verification_id: str,
-#     status: str,
-#     first_name: str,
-#     last_name: str,
-#     birth_date: str,
-#     email: str,
-#     org: dict,
-#     discharge_date: str,
-# ) -> dict:
-#     """Submit military info ke SheerID"""
-#     async with httpx.AsyncClient(timeout=15.0) as client:
-#         try:
-#             step1_url = f"{SHEERID_BASE_URL}/rest/v2/verification/{verification_id}/step/collectMilitaryStatus"
-#             step1_body = {"status": status}
-# 
-#             print(f"📤 Step 1 URL: {step1_url}")
-#             print(f"📦 Step 1 Payload: {step1_body}")
-# 
-#             r1 = await client.post(step1_url, json=step1_body)
-# 
-#             print(f"📥 Step 1 Response: {r1.status_code}")
-#             print(f"📥 Step 1 Body: {r1.text[:500]}")
-# 
-#             if r1.status_code == 429:
-#                 return {
-#                     "success": False, 
-#                     "message": f"Rate limit (429) at step 1: {r1.text}"
-#                 }
-# 
-#             if r1.status_code != 200:
-#                 return {
-#                     "success": False, 
-#                     "message": f"collectMilitaryStatus failed: {r1.status_code} - {r1.text}"
-#                 }
-# 
-#             d1 = r1.json()
-#             submission_url = d1.get("submissionUrl")
-# 
-#             if not submission_url:
-#                 return {"success": False, "message": "No submissionUrl in step 1 response"}
-# 
-#             print(f"✅ Got submissionUrl: {submission_url}")
-# 
-#             # Delay sebelum step 2
-#             await asyncio.sleep(random.uniform(REQUEST_DELAY_MIN, REQUEST_DELAY_MAX))  # Random delay 3-6 detik
-# 
-#             submission_opt_in = (
-#                 "By submitting the personal information above, I acknowledge that my personal "
-#                 "information is being collected under the privacy policy of the business from "
-#                 "which I am seeking a discount, and I understand that my personal information "
-#                 "will be shared with SheerID as a processor/third-party service provider in "
-#                 "order for SheerID to confirm my eligibility for a special offer."
-#             )
-# 
-#             payload2 = {
-#                 "firstName": first_name,
-#                 "lastName": last_name,
-#                 "birthDate": birth_date,
-#                 "email": email,
-#                 "phoneNumber": "",
-#                 "organization": {
-#                     "id": org["id"],
-#                     "name": org["name"]
-#                 },
-#                 "dischargeDate": discharge_date,
-#                 "locale": "en-US",
-#                 "country": "US",
-#                 "metadata": {
-#                     "marketConsentValue": False,
-#                     "refererUrl": "",
-#                     "verificationId": verification_id,
-#                     "submissionOptIn": submission_opt_in,
-#                 },
-#             }
-# 
-#             print(f"📤 Step 2 URL (submissionUrl): {submission_url}")
-# 
-#             r2 = await client.post(submission_url, json=payload2)
-# 
-#             print(f"📥 Step 2 Response: {r2.status_code}")
-# 
-#             if r2.status_code == 429:
-#                 return {
-#                     "success": False, 
-#                     "message": f"Rate limit (429) at step 2: {r2.text}"
-#                 }
-# 
-#             if r2.status_code != 200:
-#                 return {
-#                     "success": False, 
-#                     "message": f"collectInactiveMilitaryPersonalInfo failed: {r2.status_code} - {r2.text}"
-#                 }
-# 
-#             return {"success": True, "message": "Military info submitted successfully"}
-# 
-#         except Exception as e:
-#             print(f"❌ Exception in submit_military_flow: {e}")
-#             return {"success": False, "message": str(e)}
-# 
-# # =====================================================
-# # CONVERSATION HANDLERS
-# # =====================================================
-# 
+async def submit_military_flow_with_retry(
+    verification_id: str,
+    status: str,
+    first_name: str,
+    last_name: str,
+    birth_date: str,
+    email: str,
+    org: dict,
+    discharge_date: str,
+) -> dict:
+    """Submit dengan retry logic dan exponential backoff untuk handle 429"""
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            # Delay antar request untuk avoid rate limit
+            if attempt > 0:
+                backoff_delay = RETRY_BACKOFF * (2 ** (attempt - 1))
+                print(f"⏳ Waiting {backoff_delay}s before retry (attempt {attempt + 1}/{MAX_RETRIES})...")
+                await asyncio.sleep(backoff_delay)
+            else:
+                await asyncio.sleep(random.uniform(REQUEST_DELAY_MIN, REQUEST_DELAY_MAX))  # Random delay 3-6 detik
+
+            result = await submit_military_flow(
+                verification_id, status, first_name, last_name,
+                birth_date, email, org, discharge_date
+            )
+
+            # Jika 429, retry
+            if not result.get("success"):
+                error_msg = result.get("message", "")
+                if "429" in error_msg or "rate limit" in error_msg.lower() or "limit" in error_msg.lower():
+                    print(f"⚠️ Rate limit hit (429), will retry...")
+                    continue
+                else:
+                    return result  # Error lain, langsung return
+
+            return result
+
+        except Exception as e:
+            print(f"❌ Attempt {attempt + 1} failed: {e}")
+            if attempt == MAX_RETRIES - 1:
+                return {"success": False, "message": f"All {MAX_RETRIES} attempts failed: {str(e)}"}
+
+    return {"success": False, "message": "Max retries exceeded"}
+
+async def submit_military_flow(
+    verification_id: str,
+    status: str,
+    first_name: str,
+    last_name: str,
+    birth_date: str,
+    email: str,
+    org: dict,
+    discharge_date: str,
+) -> dict:
+    """Submit military info ke SheerID"""
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            step1_url = f"{SHEERID_BASE_URL}/rest/v2/verification/{verification_id}/step/collectMilitaryStatus"
+            step1_body = {"status": status}
+
+            print(f"📤 Step 1 URL: {step1_url}")
+            print(f"📦 Step 1 Payload: {step1_body}")
+
+            r1 = await client.post(step1_url, json=step1_body)
+
+            print(f"📥 Step 1 Response: {r1.status_code}")
+            print(f"📥 Step 1 Body: {r1.text[:500]}")
+
+            if r1.status_code == 429:
+                return {
+                    "success": False, 
+                    "message": f"Rate limit (429) at step 1: {r1.text}"
+                }
+
+            if r1.status_code != 200:
+                return {
+                    "success": False, 
+                    "message": f"collectMilitaryStatus failed: {r1.status_code} - {r1.text}"
+                }
+
+            d1 = r1.json()
+            submission_url = d1.get("submissionUrl")
+
+            if not submission_url:
+                return {"success": False, "message": "No submissionUrl in step 1 response"}
+
+            print(f"✅ Got submissionUrl: {submission_url}")
+
+            # Delay sebelum step 2
+            await asyncio.sleep(random.uniform(REQUEST_DELAY_MIN, REQUEST_DELAY_MAX))  # Random delay 3-6 detik
+
+            submission_opt_in = (
+                "By submitting the personal information above, I acknowledge that my personal "
+                "information is being collected under the privacy policy of the business from "
+                "which I am seeking a discount, and I understand that my personal information "
+                "will be shared with SheerID as a processor/third-party service provider in "
+                "order for SheerID to confirm my eligibility for a special offer."
+            )
+
+            payload2 = {
+                "firstName": first_name,
+                "lastName": last_name,
+                "birthDate": birth_date,
+                "email": email,
+                "phoneNumber": "",
+                "organization": {
+                    "id": org["id"],
+                    "name": org["name"]
+                },
+                "dischargeDate": discharge_date,
+                "locale": "en-US",
+                "country": "US",
+                "metadata": {
+                    "marketConsentValue": False,
+                    "refererUrl": "",
+                    "verificationId": verification_id,
+                    "submissionOptIn": submission_opt_in,
+                },
+            }
+
+            print(f"📤 Step 2 URL (submissionUrl): {submission_url}")
+
+            r2 = await client.post(submission_url, json=payload2)
+
+            print(f"📥 Step 2 Response: {r2.status_code}")
+
+            if r2.status_code == 429:
+                return {
+                    "success": False, 
+                    "message": f"Rate limit (429) at step 2: {r2.text}"
+                }
+
+            if r2.status_code != 200:
+                return {
+                    "success": False, 
+                    "message": f"collectInactiveMilitaryPersonalInfo failed: {r2.status_code} - {r2.text}"
+                }
+
+            return {"success": True, "message": "Military info submitted successfully"}
+
+        except Exception as e:
+            print(f"❌ Exception in submit_military_flow: {e}")
+            return {"success": False, "message": str(e)}
+
+# =====================================================
+# CONVERSATION HANDLERS
+# =====================================================
+
 async def veteran_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
@@ -1688,13 +1355,12 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
         v_user_data.pop(user_id, None)
         return ConversationHandler.END
 
-    # confirm_yes - Process verification DENGAN BROWSER!
+    # confirm_yes - Process verification
     await query.edit_message_text(
         "⏳ *Processing verification...*\n\n"
         "🔄 Step 1: Generating temp email...\n"
-        "🌐 Step 2: Membuka Chrome browser...\n"
-        "🖱️ Step 3: Isi form seperti manusia...\n"
-        "📧 Step 4: Monitoring email...\n\n"
+        "⏳ Step 2: Submitting to SheerID...\n"
+        "⏳ Step 3: Monitoring email...\n\n"
         "Tunggu sebentar...",
         parse_mode="Markdown"
     )
@@ -1722,37 +1388,32 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
         chat_id=chat_id,
         text=(
             f"✅ *Email generated:* `{email}`\n\n"
-            "🌐 Membuka Chrome browser...\n"
-            "🖱️ Bot akan isi form seperti manusia (BUKAN API!)...\n"
-            "⏳ Please wait 10-15 seconds..."
+            "🔄 Submitting data ke SheerID API...\n"
+            "⏳ Please wait..."
         ),
         parse_mode="Markdown"
     )
 
-    # ISI FORM DENGAN BROWSER! (BUKAN API)
-    fill_result = await fill_sheerid_form_with_browser(
-        url=data["original_url"],
+    # Submit to SheerID dengan retry logic
+    submit_result = await submit_military_flow_with_retry(
+        verification_id=data["verification_id"],
         status=data["status"],
-        org_name=data["organization"]["name"],
         first_name=data["first_name"],
         last_name=data["last_name"],
         birth_date=data["birth_date"],
         email=email,
+        org=data["organization"],
         discharge_date=data["discharge_date"]
     )
 
-    if not fill_result.get("success"):
-        error_msg = fill_result.get("message", "Unknown error")
+    if not submit_result.get("success"):
+        error_msg = submit_result.get("message", "Unknown error")
         await context.bot.send_message(
             chat_id=chat_id,
             text=(
-                "❌ *BROWSER FORM SUBMISSION FAILED*\n\n"
+                "❌ *SUBMISSION FAILED*\n\n"
                 f"Error: {error_msg}\n\n"
-                "Kemungkinan:\n"
-                "• Page tidak load dengan benar\n"
-                "• Form elements tidak ditemukan\n"
-                "• Submit button tidak bisa di-klik\n\n"
-                "Coba lagi dengan /veteran"
+                "Coba lagi atau /veteran restart."
             ),
             parse_mode="Markdown"
         )
@@ -1771,10 +1432,9 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
     await context.bot.send_message(
         chat_id=chat_id,
         text=(
-            "✅ *Form berhasil diisi via browser!*\n\n"
-            f"📧 Email: `{email}`\n"
-            f"🌐 Final URL: `{fill_result.get('final_url', 'N/A')}`\n\n"
-            "🔄 Monitoring inbox setiap 10 detik...\n"
+            "✅ *Data submitted successfully!*\n\n"
+            f"📧 Monitoring email: `{email}`\n"
+            "🔄 Checking inbox setiap 10 detik...\n\n"
             "⏳ Bot akan otomatis klik verification link jika email masuk.\n"
             "Max wait time: 5 menit."
         ),
@@ -1796,13 +1456,12 @@ async def veteran_confirm_callback(update: Update, context: ContextTypes.DEFAULT
         user_id,
         f"{data['first_name']} {data['last_name']}",
         email,
-        "submitted_via_browser",
+        "submitted",
         True
     )
 
     v_user_data.pop(user_id, None)
     return ConversationHandler.END
-
 
 async def cancel_veteran(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -1861,10 +1520,9 @@ def main():
     print(f"✅ JobQueue enabled for email monitoring")
 
     # Run bot
-    application.run_polling(
     allowed_updates=Update.ALL_TYPES,
-    drop_pending_updates=True  # 
-    )
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True
    
 
 if __name__ == "__main__":
