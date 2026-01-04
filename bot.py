@@ -533,7 +533,6 @@ async def fill_sheerid_form_with_browser(
         print(f"📝 URL: {url}")
 
         async with async_playwright() as p:
-            # Launch Chromium browser
             browser = await p.chromium.launch(
                 headless=True,
                 args=[
@@ -548,7 +547,6 @@ async def fill_sheerid_form_with_browser(
                 ]
             )
 
-            # Random UA & Viewport
             random_ua = random.choice(USER_AGENTS)
             random_viewport = random.choice(VIEWPORTS)
 
@@ -573,7 +571,6 @@ async def fill_sheerid_form_with_browser(
             # STEP 1: Select Military Status
             print(f"📝 Step 1: Selecting status = {status}")
 
-            # Map status untuk selector
             status_selectors = {
                 "ACTIVE_DUTY": [
                     'input[value="ACTIVE_DUTY"]',
@@ -604,12 +601,10 @@ async def fill_sheerid_form_with_browser(
                     status_selected = True
                     await asyncio.sleep(1)
                     break
-                except Exception as e:
-                    print(f"⚠️ Selector '{selector}' failed: {e}")
+                except:
                     continue
 
             if not status_selected:
-                print(f"⚠️ Could not select status, trying JavaScript...")
                 try:
                     status_value = "INACTIVE_MILITARY" if status == "VETERAN" else status
                     await page.evaluate(f"""
@@ -618,15 +613,14 @@ async def fill_sheerid_form_with_browser(
                     """)
                     print(f"✅ Status selected via JavaScript")
                     await asyncio.sleep(1)
-                except Exception as e:
-                    print(f"❌ JavaScript status selection failed: {e}")
+                except:
+                    pass
 
-            # STEP 2: Select Organization (Branch)
+            # STEP 2: Select Organization
             print(f"📝 Step 2: Selecting organization = {org_name}")
 
             org_selected = False
 
-            # Try dropdown/select first
             try:
                 select_selectors = ['select[name="organization"]', 'select#organization', 'select[id*="organization"]']
                 for sel in select_selectors:
@@ -640,7 +634,6 @@ async def fill_sheerid_form_with_browser(
             except:
                 pass
 
-            # Try button/radio if dropdown failed
             if not org_selected:
                 button_selectors = [
                     f'button:has-text("{org_name}")',
@@ -655,9 +648,6 @@ async def fill_sheerid_form_with_browser(
                         break
                     except:
                         continue
-
-            if not org_selected:
-                print(f"⚠️ Could not select organization")
 
             await asyncio.sleep(1)
 
@@ -775,12 +765,10 @@ async def fill_sheerid_form_with_browser(
                     print(f"✅ Form submitted via: {selector}")
                     form_submitted = True
                     break
-                except Exception as e:
-                    print(f"⚠️ Submit selector '{selector}' failed: {e}")
+                except:
                     continue
 
             if not form_submitted:
-                print(f"❌ Could not find submit button")
                 await browser.close()
                 return {
                     "success": False,
@@ -788,13 +776,11 @@ async def fill_sheerid_form_with_browser(
                     "message": "Could not find submit button on page"
                 }
 
-            # Wait for submission to complete
             await asyncio.sleep(3)
 
             print(f"📊 Form submission complete!")
             print(f"📍 Current URL: {page.url}")
 
-            # Check for success/error messages
             try:
                 page_text = await page.inner_text('body')
             except:
@@ -1844,7 +1830,7 @@ def main():
         },
         fallbacks=[CommandHandler("cancel", cancel_veteran)],
         conversation_timeout=STEP_TIMEOUT,
-        per_message=True,
+        per_message=False,
         per_chat=True,
         per_user=True,
     )
